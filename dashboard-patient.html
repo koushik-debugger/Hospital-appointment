@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HMS — Patient Dashboard</title>
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+</head>
+<body>
+<div class="bg-mesh"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo-icon">🏥</div>
+    <div class="sidebar-logo-text">Care<span>Bridge</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Main</div>
+    <div class="nav-item active" onclick="showSection('overview')" id="nav-overview">
+      <span class="nav-icon">🏠</span> Overview
+    </div>
+    <div class="nav-item" onclick="showSection('book')" id="nav-book">
+      <span class="nav-icon">📅</span> Book Appointment
+    </div>
+    <div class="nav-item" onclick="showSection('appointments')" id="nav-appointments">
+      <span class="nav-icon">📋</span> My Appointments
+    </div>
+    <div class="nav-item" onclick="showSection('doctors')" id="nav-doctors">
+      <span class="nav-icon">👨‍⚕️</span> Find Doctors
+    </div>
+    <div class="nav-section-label" style="margin-top:16px;">Account</div>
+    <div class="nav-item" onclick="showSection('profile')" id="nav-profile">
+      <span class="nav-icon">👤</span> My Profile
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="sidebar-user">
+      <div class="avatar avatar-sm" id="sidebar-avatar">?</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name" id="sidebar-name">—</div>
+        <div class="sidebar-user-role">Patient</div>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-full btn-sm" onclick="Auth.logout()">🚪 Sign Out</button>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main-content">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Overview</div>
+    </div>
+    <div class="topbar-actions" style="position:relative;">
+      <button class="icon-btn" onclick="toggleInbox()" id="inbox-btn" title="Email Inbox">
+        📬
+        <span id="inbox-badge"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <!-- ══ OVERVIEW ══ -->
+    <div id="section-overview" class="tab-panel active">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h2 id="greeting">Good morning! 👋</h2>
+          <p>Here's a summary of your health appointments</p>
+        </div>
+        <button class="btn btn-primary" onclick="showSection('book')">+ Book Appointment</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="glass stat-card">
+          <div class="stat-icon" style="background:rgba(20,184,166,0.15);">📅</div>
+          <div class="stat-value text-teal" id="stat-upcoming">0</div>
+          <div class="stat-label">Upcoming Appointments</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-icon" style="background:rgba(34,197,94,0.15);">✅</div>
+          <div class="stat-value text-success" id="stat-completed">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-icon" style="background:rgba(245,158,11,0.15);">⏳</div>
+          <div class="stat-value text-gold" id="stat-pending">0</div>
+          <div class="stat-label">Pending Confirmation</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-icon" style="background:rgba(59,130,246,0.15);">👨‍⚕️</div>
+          <div class="stat-value" style="color:#93c5fd;" id="stat-doctors">0</div>
+          <div class="stat-label">Available Doctors</div>
+        </div>
+      </div>
+
+      <h3 style="margin-bottom:16px;">Upcoming Appointments</h3>
+      <div id="overview-appointments"></div>
+    </div>
+
+    <!-- ══ BOOK APPOINTMENT ══ -->
+    <div id="section-book" class="tab-panel">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h2>Book an Appointment</h2>
+          <p>Choose a doctor and your preferred time</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:24px;align-items:start;" class="book-grid">
+        <!-- Symptom Checker & Doctor selector -->
+        <div style="display:flex;flex-direction:column;gap:24px;">
+          <div class="glass" style="padding:24px;">
+            <h3 style="margin-bottom:12px;">Symptom Checker</h3>
+            <p class="text-muted text-sm" style="margin-bottom:12px;">Describe your symptoms to be directed to the right department.</p>
+            <div style="display:flex;gap:12px;align-items:stretch;">
+              <textarea id="symptom-input" class="form-control" rows="2" placeholder="E.g., I have a severe headache and dizziness..." style="flex:1;resize:none;"></textarea>
+              <button class="btn btn-primary" onclick="analyzeSymptoms()" style="white-space:nowrap;padding:0 16px;">Analyze</button>
+            </div>
+            <div id="symptom-result" style="margin-top:16px; display:none; padding:12px; border-radius:8px; background:rgba(20,184,166,0.1); border:1px solid rgba(20,184,166,0.2);">
+            </div>
+          </div>
+
+          <div class="glass" style="padding:24px;">
+            <h3 style="margin-bottom:16px;">Select Doctor</h3>
+          <div class="search-bar" style="margin-bottom:16px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" placeholder="Search by name or specialty..." id="doc-search" oninput="filterDoctors()" />
+          </div>
+          <div style="margin-bottom:12px;">
+            <select class="form-control" id="spec-filter" onchange="filterDoctors()">
+              <option value="">All Specializations</option>
+              <option>Cardiology</option><option>Neurology</option><option>Orthopedics</option>
+              <option>Pediatrics</option><option>Dermatology</option><option>Psychiatry</option>
+              <option>Gynecology</option><option>Oncology</option><option>General Medicine</option>
+              <option>ENT</option><option>Ophthalmology</option><option>Dentistry</option>
+            </select>
+          </div>
+          <div id="doctor-list-book" style="max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+        </div>
+
+        <!-- Booking Form -->
+        <div class="glass" style="padding:24px;">
+          <h3 style="margin-bottom:6px;">Appointment Details</h3>
+          <p class="text-muted text-sm" style="margin-bottom:20px;">Fill in the details below</p>
+
+          <div id="selected-doc-info" class="hidden" style="display:none;padding:14px;background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:12px;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="avatar avatar-md" id="sel-doc-avatar">—</div>
+              <div>
+                <div id="sel-doc-name" style="font-weight:700;"></div>
+                <div id="sel-doc-spec" style="font-size:0.8rem;color:var(--teal-400);"></div>
+              </div>
+            </div>
+          </div>
+
+          <form id="book-form" novalidate>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <div class="form-group">
+                <label class="form-label">Appointment Date</label>
+                <input type="date" id="apt-date" class="form-control" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Preferred Time</label>
+                <select id="apt-time" class="form-control" required>
+                  <option value="">Select time slot</option>
+                  <option>09:00 AM</option><option>09:30 AM</option><option>10:00 AM</option>
+                  <option>10:30 AM</option><option>11:00 AM</option><option>11:30 AM</option>
+                  <option>12:00 PM</option><option>02:00 PM</option><option>02:30 PM</option>
+                  <option>03:00 PM</option><option>03:30 PM</option><option>04:00 PM</option>
+                  <option>04:30 PM</option><option>05:00 PM</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Reason for Visit</label>
+                <textarea id="apt-reason" class="form-control" rows="3" placeholder="Briefly describe your symptoms or reason..." required></textarea>
+              </div>
+              <div id="book-error" class="form-error"></div>
+              <button type="submit" class="btn btn-primary btn-full" id="book-btn">Confirm Appointment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MY APPOINTMENTS ══ -->
+    <div id="section-appointments" class="tab-panel">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h2>My Appointments</h2>
+          <p>View and manage all your appointments</p>
+        </div>
+      </div>
+      <div class="tabs" style="margin-bottom:24px;">
+        <button class="tab-btn active" onclick="filterApts('all', this)">All</button>
+        <button class="tab-btn" onclick="filterApts('pending', this)">Pending</button>
+        <button class="tab-btn" onclick="filterApts('confirmed', this)">Confirmed</button>
+        <button class="tab-btn" onclick="filterApts('completed', this)">Completed</button>
+        <button class="tab-btn" onclick="filterApts('cancelled', this)">Cancelled</button>
+      </div>
+      <div id="apt-list"></div>
+    </div>
+
+    <!-- ══ FIND DOCTORS ══ -->
+    <div id="section-doctors" class="tab-panel">
+      <div class="page-header">
+        <div class="page-header-left"><h2>Find Doctors</h2><p>Browse our network of verified doctors</p></div>
+      </div>
+      <div class="search-bar" style="margin-bottom:20px;max-width:400px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search doctors..." id="all-doc-search" oninput="renderAllDoctors()" />
+      </div>
+      <div id="all-doctors-grid" class="cards-grid"></div>
+    </div>
+
+    <!-- ══ PROFILE ══ -->
+    <div id="section-profile" class="tab-panel">
+      <div class="page-header">
+        <div class="page-header-left"><h2>My Profile</h2><p>Update your personal information</p></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;" class="profile-grid">
+        <div class="glass" style="padding:28px;">
+          <h3 style="margin-bottom:20px;">Personal Information</h3>
+          <form id="profile-form">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="form-group">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="p-name" class="form-control" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input type="tel" id="p-phone" class="form-control" />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Date of Birth</label>
+                  <input type="date" id="p-dob" class="form-control" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Blood Group</label>
+                  <select id="p-blood" class="form-control">
+                    <option value="">Select</option>
+                    <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="glass" style="padding:28px;">
+          <h3 style="margin-bottom:20px;">Change Password</h3>
+          <form id="pw-form">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div class="form-group">
+                <label class="form-label">Current Password</label>
+                <input type="password" id="pw-current" class="form-control" placeholder="••••••" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" id="pw-new" class="form-control" placeholder="Min 6 characters" />
+              </div>
+              <div id="pw-error" class="form-error"></div>
+              <button type="submit" class="btn btn-outline">Update Password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Appointment Modal -->
+<div class="modal-overlay" id="cancel-modal">
+  <div class="modal glass">
+    <button class="modal-close" onclick="closeCancelModal()">✕</button>
+    <div style="text-align:center;margin-bottom:20px;"><span style="font-size:3rem;">❌</span></div>
+    <h3 style="text-align:center;margin-bottom:8px;">Cancel Appointment?</h3>
+    <p style="text-align:center;margin-bottom:24px;">This action cannot be undone.</p>
+    <input type="hidden" id="cancel-apt-id" />
+    <div style="display:flex;gap:12px;">
+      <button class="btn btn-outline btn-full" onclick="closeCancelModal()">Keep it</button>
+      <button class="btn btn-danger btn-full" onclick="confirmCancel()">Yes, Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Message Doctor Modal -->
+<div class="modal-overlay" id="message-modal">
+  <div class="modal glass">
+    <button class="modal-close" onclick="closeMessageModal()">✕</button>
+    <h3 style="margin-bottom:8px;">Send Message</h3>
+    <p class="text-muted text-sm" style="margin-bottom:20px;">Send a direct message to <span id="msg-doc-name" style="font-weight:700;color:var(--text-color);">the doctor</span></p>
+    <input type="hidden" id="msg-doc-id" />
+    <div class="form-group" style="margin-bottom:20px;">
+      <textarea id="msg-content" class="form-control" rows="4" placeholder="Type your message here..." style="resize:none;"></textarea>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="sendMessage()">Send Message</button>
+  </div>
+</div>
+
+<!-- Inbox Panel -->
+<div style="position:fixed;top:70px;right:24px;z-index:500;">
+  <div class="inbox-panel" id="inbox-panel">
+    <div class="inbox-panel-header">
+      <h4>📬 Email Inbox</h4>
+      <button class="btn btn-outline btn-sm" onclick="toggleInbox()">✕</button>
+    </div>
+    <div id="inbox-list-wrap">
+      <div id="inbox-list"></div>
+    </div>
+    <div id="email-viewer"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/data.js"></script>
+<script src="js/email.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  let currentUser = Auth.requireAuth(['patient']);
+  if (!currentUser) throw new Error('Not authorized');
+
+  let selectedDoctorId = null;
+  let currentAptFilter = 'all';
+
+  function init() {
+    // Greeting
+    const hr = new Date().getHours();
+    const greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greeting').textContent = `${greet}, ${currentUser.name.split(' ')[0]}! 👋`;
+
+    // Sidebar
+    document.getElementById('sidebar-name').textContent = currentUser.name;
+    document.getElementById('sidebar-avatar').textContent = getInitials(currentUser.name);
+
+    // Inbox badge
+    const unread = Email.getUnread(currentUser.email);
+    const badge = document.getElementById('inbox-badge');
+    badge.textContent = unread;
+    badge.style.display = unread > 0 ? 'flex' : 'none';
+
+    renderStats();
+    renderOverviewAppointments();
+    renderBookDoctors();
+    renderAptList('all');
+    renderAllDoctors();
+    fillProfile();
+
+    // Min date = today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('apt-date').min = today;
+  }
+
+  function renderStats() {
+    const apts = DB.getAppointmentsByPatient(currentUser.id);
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('stat-upcoming').textContent =
+      apts.filter(a => a.date >= today && ['pending','confirmed'].includes(a.status)).length;
+    document.getElementById('stat-completed').textContent = apts.filter(a => a.status === 'completed').length;
+    document.getElementById('stat-pending').textContent   = apts.filter(a => a.status === 'pending').length;
+    document.getElementById('stat-doctors').textContent   = DB.getUsersByRole('doctor').filter(d => d.status === 'active').length;
+  }
+
+  function renderOverviewAppointments() {
+    const today = new Date().toISOString().split('T')[0];
+    const apts  = DB.getAppointmentsByPatient(currentUser.id)
+      .filter(a => a.date >= today && ['pending','confirmed'].includes(a.status))
+      .slice(0, 3);
+    const el = document.getElementById('overview-appointments');
+    if (!apts.length) {
+      el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📅</div><h3>No upcoming appointments</h3><p>Book your first appointment with a doctor</p><button class="btn btn-primary" onclick="showSection('book')" style="margin-top:8px;">Book Now</button></div>`;
+      return;
+    }
+    el.innerHTML = apts.map(a => aptCard(a)).join('');
+  }
+
+  function aptCard(a, showCancel = true) {
+    const doctor = DB.getUserById(a.doctorId);
+    const statusClass = { pending:'warning', confirmed:'success', completed:'teal', rejected:'danger', cancelled:'muted' };
+    return `
+      <div class="appointment-card" style="margin-bottom:14px;">
+        <div class="apt-header">
+          <div class="apt-doctor-info">
+            <div class="avatar avatar-sm">${getInitials(doctor?.name||'?')}</div>
+            <div>
+              <div class="apt-doctor-name">${doctor ? 'Dr. '+doctor.name : 'Unknown Doctor'}</div>
+              <div class="apt-specialty">${doctor?.specialization || ''}</div>
+            </div>
+          </div>
+          <span class="badge badge-${statusClass[a.status]||'muted'}">${a.status}</span>
+        </div>
+        <div class="apt-datetime">
+          <div class="apt-date-chip">📅 ${formatDate(a.date)}</div>
+          <div class="apt-time-chip">🕐 ${a.time}</div>
+        </div>
+        ${a.reason ? `<div class="apt-reason">📝 ${a.reason}</div>` : ''}
+        ${showCancel && ['pending','confirmed'].includes(a.status) ? `
+          <div class="apt-actions">
+            <button class="btn btn-danger btn-sm" onclick="openCancelModal('${a.id}')">Cancel</button>
+          </div>` : ''}
+      </div>`;
+  }
+
+  function renderAptList(filter) {
+    currentAptFilter = filter;
+    const apts = DB.getAppointmentsByPatient(currentUser.id)
+      .filter(a => filter === 'all' || a.status === filter);
+    const el = document.getElementById('apt-list');
+    if (!apts.length) {
+      el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No ${filter === 'all' ? '' : filter} appointments</h3></div>`;
+      return;
+    }
+    el.innerHTML = apts.map(a => aptCard(a)).join('');
+  }
+
+  function filterApts(filter, btn) {
+    document.querySelectorAll('.tabs .tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAptList(filter);
+  }
+
+  function renderBookDoctors() {
+    const search = (document.getElementById('doc-search')?.value || '').toLowerCase();
+    const spec   = document.getElementById('spec-filter')?.value || '';
+    const doctors = DB.getUsersByRole('doctor').filter(d =>
+      d.status === 'active' &&
+      (!search || d.name.toLowerCase().includes(search) || (d.specialization||'').toLowerCase().includes(search)) &&
+      (!spec || d.specialization === spec)
+    );
+
+    const el = document.getElementById('doctor-list-book');
+    if (!doctors.length) { el.innerHTML = `<div class="text-muted text-sm" style="padding:16px;">No doctors found</div>`; return; }
+
+    el.innerHTML = doctors.map(d => `
+      <div class="glass" style="padding:14px;cursor:pointer;border-color:${selectedDoctorId===d.id?'var(--teal-500)':'var(--glass-border)'};background:${selectedDoctorId===d.id?'var(--teal-glow)':''};" onclick="selectDoctor('${d.id}')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar avatar-sm">${getInitials(d.name)}</div>
+          <div>
+            <div style="font-weight:700;font-size:0.88rem;">Dr. ${d.name}</div>
+            <div style="font-size:0.76rem;color:var(--teal-400);">${d.specialization||'—'}</div>
+          </div>
+          <div style="margin-left:auto;font-size:0.75rem;color:var(--text-muted);">${d.experience||0} yrs</div>
+        </div>
+      </div>`).join('');
+  }
+
+  function filterDoctors() { renderBookDoctors(); }
+
+  function selectDoctor(id) {
+    selectedDoctorId = id;
+    const doc = DB.getUserById(id);
+    const info = document.getElementById('selected-doc-info');
+    info.style.display = 'block';
+    document.getElementById('sel-doc-avatar').textContent = getInitials(doc.name);
+    document.getElementById('sel-doc-name').textContent   = 'Dr. ' + doc.name;
+    document.getElementById('sel-doc-spec').textContent   = doc.specialization || '';
+    renderBookDoctors();
+  }
+
+  function analyzeSymptoms() {
+    const text = document.getElementById('symptom-input').value.toLowerCase();
+    if (!text.trim()) {
+      showToast('Please enter your symptoms.', 'warning');
+      return;
+    }
+    
+    const keywords = {
+      'Cardiology': ['heart', 'chest pain', 'blood pressure', 'palpitation', 'cardiac', 'breath'],
+      'Neurology': ['headache', 'brain', 'nerve', 'seizure', 'dizzy', 'dizziness', 'migraine', 'numbness'],
+      'Orthopedics': ['bone', 'joint', 'fracture', 'back pain', 'muscle', 'arthritis', 'knee', 'sprain'],
+      'Pediatrics': ['child', 'baby', 'kid', 'infant', 'toddler'],
+      'Dermatology': ['skin', 'rash', 'acne', 'itch', 'spot', 'eczema', 'pimple'],
+      'Psychiatry': ['mental', 'stress', 'anxiety', 'depression', 'sad', 'sleep', 'panic', 'hallucination'],
+      'Gynecology': ['period', 'pregnancy', 'women', 'menstrual', 'uterus', 'vaginal'],
+      'Oncology': ['cancer', 'tumor', 'lump', 'chemo'],
+      'ENT': ['ear', 'nose', 'throat', 'cough', 'swallow', 'hearing', 'sinus', 'voice'],
+      'Ophthalmology': ['eye', 'vision', 'sight', 'blind', 'blur'],
+      'Dentistry': ['tooth', 'dental', 'teeth', 'gum', 'jaw', 'cavity']
+    };
+    
+    let suggestedSpec = 'General Medicine';
+    let maxMatches = 0;
+    
+    for (const [spec, words] of Object.entries(keywords)) {
+      let matches = 0;
+      for (const word of words) {
+        if (text.includes(word)) matches++;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        suggestedSpec = spec;
+      }
+    }
+    
+    const resultEl = document.getElementById('symptom-result');
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `<strong>Suggested Department:</strong> <span style="color:var(--teal-500);font-weight:700;">${suggestedSpec}</span>
+      <p style="margin-top:8px;font-size:0.85rem;" class="text-muted">We have updated the doctors list based on your symptoms.</p>`;
+    
+    const specFilter = document.getElementById('spec-filter');
+    let optionExists = Array.from(specFilter.options).some(opt => opt.value === suggestedSpec);
+    if (!optionExists && suggestedSpec === 'General Medicine') {
+        specFilter.value = 'General Medicine';
+    } else {
+        specFilter.value = suggestedSpec;
+    }
+    
+    filterDoctors();
+    showToast('Department suggested based on symptoms', 'success');
+  }
+
+  document.getElementById('book-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('book-error');
+    errEl.classList.remove('show');
+
+    if (!selectedDoctorId) { errEl.textContent = 'Please select a doctor'; errEl.classList.add('show'); return; }
+    const date   = document.getElementById('apt-date').value;
+    const time   = document.getElementById('apt-time').value;
+    const reason = document.getElementById('apt-reason').value.trim();
+    if (!date || !time || !reason) { errEl.textContent = 'Please fill all fields'; errEl.classList.add('show'); return; }
+
+    const doctor = DB.getUserById(selectedDoctorId);
+    const apt = DB.createAppointment({ patientId: currentUser.id, doctorId: selectedDoctorId, date, time, reason });
+
+    // Emails
+    Email.send({ to: currentUser.email, toName: currentUser.name, ...Email.Templates.appointmentBooked(currentUser.name, doctor.name, formatDate(date), time) });
+
+    // Notify doctor
+    DB.createNotification(selectedDoctorId, 'New Appointment Request', `${currentUser.name} booked an appointment on ${formatDate(date)} at ${time}`, 'info');
+
+    showToast('Appointment booked successfully!', 'success');
+    this.reset();
+    selectedDoctorId = null;
+    document.getElementById('selected-doc-info').style.display = 'none';
+    renderStats();
+    renderBookDoctors();
+    renderOverviewAppointments();
+
+    // Update inbox badge
+    const badge = document.getElementById('inbox-badge');
+    const unread = Email.getUnread(currentUser.email);
+    badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none';
+  });
+
+  function renderAllDoctors() {
+    const search = (document.getElementById('all-doc-search')?.value||'').toLowerCase();
+    const doctors = DB.getUsersByRole('doctor').filter(d =>
+      d.status === 'active' &&
+      (!search || d.name.toLowerCase().includes(search) || (d.specialization||'').toLowerCase().includes(search))
+    );
+    const el = document.getElementById('all-doctors-grid');
+    if (!doctors.length) { el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">👨‍⚕️</div><h3>No doctors found</h3></div>`; return; }
+    el.innerHTML = doctors.map(d => `
+      <div class="glass doctor-card">
+        <div class="avatar avatar-lg">${getInitials(d.name)}</div>
+        <h4>Dr. ${d.name}</h4>
+        <div class="specialty">${d.specialization||'General'}</div>
+        <div class="experience">🏆 ${d.experience||0} years experience</div>
+        ${d.bio ? `<p style="font-size:0.8rem;margin-bottom:16px;">${d.bio}</p>` : ''}
+        <div style="display:flex;gap:8px;margin-top:auto;">
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="showSection('book');selectDoctor('${d.id}')">Book</button>
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="openMessageModal('${d.id}')">Message</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function fillProfile() {
+    document.getElementById('p-name').value  = currentUser.name || '';
+    document.getElementById('p-phone').value = currentUser.phone || '';
+    document.getElementById('p-dob').value   = currentUser.dob || '';
+    document.getElementById('p-blood').value = currentUser.bloodGroup || '';
+  }
+
+  document.getElementById('profile-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const res = Auth.updateProfile(currentUser.id, {
+      name:       document.getElementById('p-name').value.trim(),
+      phone:      document.getElementById('p-phone').value.trim(),
+      dob:        document.getElementById('p-dob').value,
+      bloodGroup: document.getElementById('p-blood').value,
+    });
+    if (res.ok) {
+      currentUser = res.user;
+      document.getElementById('sidebar-name').textContent = currentUser.name;
+      document.getElementById('sidebar-avatar').textContent = getInitials(currentUser.name);
+      showToast('Profile updated!', 'success');
+    }
+  });
+
+  document.getElementById('pw-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const errEl = document.getElementById('pw-error');
+    errEl.classList.remove('show');
+    const res = Auth.changePassword(currentUser.id, document.getElementById('pw-current').value, document.getElementById('pw-new').value);
+    if (!res.ok) { errEl.textContent = res.error; errEl.classList.add('show'); return; }
+    showToast('Password updated!', 'success');
+    this.reset();
+  });
+
+  function openCancelModal(id) {
+    document.getElementById('cancel-apt-id').value = id;
+    document.getElementById('cancel-modal').classList.add('open');
+  }
+  function closeCancelModal() { document.getElementById('cancel-modal').classList.remove('open'); }
+  function confirmCancel() {
+    const id  = document.getElementById('cancel-apt-id').value;
+    const apt = DB.getAppointmentById(id);
+    if (apt) { apt.status = 'cancelled'; DB.saveAppointment(apt); }
+    closeCancelModal();
+    renderStats(); renderOverviewAppointments(); renderAptList(currentAptFilter);
+    showToast('Appointment cancelled.', 'info');
+  }
+
+  function openMessageModal(doctorId) {
+    const doc = DB.getUserById(doctorId);
+    if (!doc) return;
+    document.getElementById('msg-doc-id').value = doctorId;
+    document.getElementById('msg-doc-name').textContent = 'Dr. ' + doc.name;
+    document.getElementById('msg-content').value = '';
+    document.getElementById('message-modal').classList.add('open');
+  }
+
+  function closeMessageModal() {
+    document.getElementById('message-modal').classList.remove('open');
+  }
+
+  function sendMessage() {
+    const docId = document.getElementById('msg-doc-id').value;
+    const text = document.getElementById('msg-content').value.trim();
+    if (!text) {
+      showToast('Message cannot be empty.', 'warning');
+      return;
+    }
+    const doc = DB.getUserById(docId);
+    if (!doc) return;
+
+    Email.send({
+      to: doc.email,
+      toName: doc.name,
+      ...Email.Templates.customMessage(currentUser.name, doc.name, text)
+    });
+
+    DB.createNotification(docId, 'New Message', `You received a new message from ${currentUser.name}`, 'info');
+
+    showToast('Message sent successfully!', 'success');
+    closeMessageModal();
+  }
+
+  function toggleInbox() {
+    const panel = document.getElementById('inbox-panel');
+    const isOpen = panel.classList.contains('open');
+    if (!isOpen) {
+      Email.renderInbox(currentUser.email);
+      document.getElementById('email-viewer').style.display = 'none';
+      document.getElementById('inbox-list-wrap').style.display = 'block';
+    }
+    panel.classList.toggle('open');
+  }
+
+  function showSection(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    document.getElementById('nav-' + name)?.classList.add('active');
+    const titles = { overview:'Overview', book:'Book Appointment', appointments:'My Appointments', doctors:'Find Doctors', profile:'My Profile' };
+    document.getElementById('topbar-title').textContent = titles[name] || name;
+    if (name === 'appointments') renderAptList(currentAptFilter);
+    if (name === 'doctors') renderAllDoctors();
+    if (name === 'book') renderBookDoctors();
+    // Close sidebar on mobile
+    if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
+  }
+
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+  init();
+</script>
+</body>
+</html>

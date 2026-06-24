@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HMS — Create Account | Hospital Management System</title>
+  <meta name="description" content="Register as a patient or doctor on the Hospital Management System." />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+
+<body>
+  <div class="bg-mesh"></div>
+
+  <div class="auth-page">
+    <!-- Hero Panel -->
+    <div class="auth-hero">
+      <div class="auth-hero-content">
+        <div class="hero-logo">
+          <div class="hero-logo-icon">🏥</div>
+          <div class="hero-logo-text">Care<span>Bridge</span> HMS</div>
+        </div>
+        <p class="hero-tagline">Join Our Healthcare Network</p>
+        <h1>Your Health,<br /><span>Our Priority.</span></h1>
+        <p class="lead">Create your account and get access to top-rated doctors, easy appointment booking, and
+          personalised healthcare.</p>
+        <div style="margin-top:40px;display:flex;flex-direction:column;gap:14px;">
+          <div class="glass" style="padding:16px 20px;display:flex;align-items:center;gap:14px;">
+            <span style="font-size:1.5rem;">🩺</span>
+            <div>
+              <div style="font-weight:700;font-size:0.9rem;margin-bottom:2px;">For Patients</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);">Book appointments instantly with no approval needed
+              </div>
+            </div>
+          </div>
+          <div class="glass" style="padding:16px 20px;display:flex;align-items:center;gap:14px;">
+            <span style="font-size:1.5rem;">👨‍⚕️</span>
+            <div>
+              <div style="font-weight:700;font-size:0.9rem;margin-bottom:2px;">For Doctors</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);">Apply & get verified by our administration team
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register Form Panel -->
+    <div class="auth-form-panel">
+      <div class="auth-form-container" style="max-width:500px;">
+
+        <!-- Step 1: Role Select + Form -->
+        <div id="step-register">
+          <div class="auth-header">
+            <h2>Create Account ✨</h2>
+            <p>Choose your role and fill in your details</p>
+          </div>
+
+          <!-- Role Selector -->
+          <div class="role-selector" id="role-selector">
+            <div class="role-card selected" data-role="patient" onclick="selectRole('patient')">
+              <div class="check-badge">✓</div>
+              <div class="role-card-icon">🧑‍💼</div>
+              <div class="role-card-label">Patient</div>
+              <div class="role-card-desc">Book appointments</div>
+            </div>
+            <div class="role-card" data-role="doctor" onclick="selectRole('doctor')">
+              <div class="check-badge">✓</div>
+              <div class="role-card-icon">👨‍⚕️</div>
+              <div class="role-card-label">Doctor</div>
+              <div class="role-card-desc">Join our network</div>
+            </div>
+          </div>
+
+          <form id="register-form" novalidate>
+            <!-- Common Fields -->
+            <div class="form-section" style="gap:14px;">
+              <div class="form-section-title">Personal Information</div>
+
+              <div class="form-group">
+                <label class="form-label" for="reg-name">Full Name</label>
+                <div class="input-icon-wrap">
+                  <span class="icon">👤</span>
+                  <input type="text" id="reg-name" class="form-control" placeholder="Dr. John Smith" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="reg-email">Email Address</label>
+                <div class="input-icon-wrap">
+                  <span class="icon">📧</span>
+                  <input type="email" id="reg-email" class="form-control" placeholder="you@example.com" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="reg-phone">Phone Number</label>
+                  <input type="tel" id="reg-phone" class="form-control" placeholder="+91 9876543210" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="reg-password">Password</label>
+                  <input type="password" id="reg-password" class="form-control" placeholder="Min 6 characters"
+                    required />
+                </div>
+              </div>
+
+              <!-- Patient-specific -->
+              <div id="patient-fields">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label" for="reg-dob">Date of Birth</label>
+                    <input type="date" id="reg-dob" class="form-control" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="reg-blood">Blood Group</label>
+                    <select id="reg-blood" class="form-control">
+                      <option value="">Select</option>
+                      <option>A+</option>
+                      <option>A-</option>
+                      <option>B+</option>
+                      <option>B-</option>
+                      <option>AB+</option>
+                      <option>AB-</option>
+                      <option>O+</option>
+                      <option>O-</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Doctor-specific -->
+              <div id="doctor-fields" class="doctor-fields hidden">
+                <div class="form-section-title" style="margin-bottom:12px;">Professional Details</div>
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label" for="reg-spec">Specialization</label>
+                      <select id="reg-spec" class="form-control">
+                        <option value="">Select specialization</option>
+                        <option>Cardiology</option>
+                        <option>Neurology</option>
+                        <option>Orthopedics</option>
+                        <option>Pediatrics</option>
+                        <option>Dermatology</option>
+                        <option>Psychiatry</option>
+                        <option>Gynecology</option>
+                        <option>Oncology</option>
+                        <option>General Medicine</option>
+                        <option>ENT</option>
+                        <option>Ophthalmology</option>
+                        <option>Dentistry</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="reg-exp">Experience (years)</label>
+                      <input type="number" id="reg-exp" class="form-control" placeholder="5" min="0" max="60" />
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="reg-license">License Number</label>
+                    <input type="text" id="reg-license" class="form-control" placeholder="MCI/2024/XXXXX" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="reg-bio">Short Bio</label>
+                    <textarea id="reg-bio" class="form-control" rows="2"
+                      placeholder="Briefly describe your expertise..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div id="register-error" class="form-error" style="margin-top:4px;"></div>
+
+              <button type="submit" class="btn btn-primary btn-full btn-lg" id="register-btn" style="margin-top:8px;">
+                Create Account
+              </button>
+
+              <div class="auth-footer" style="margin-top:16px;">
+                Already have an account? <a href="index.html">Sign In</a>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Step 2: Email Verification (Doctor) -->
+        <div id="step-verify" class="hidden">
+          <div class="verify-screen">
+            <div class="verify-icon">📬</div>
+            <h2>Check Your Inbox</h2>
+            <p class="text-secondary" style="margin:8px 0 24px;">We sent a 6-character verification code to <strong
+                id="verify-email-display"></strong></p>
+
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">Enter the code below:</p>
+            <div class="verify-code-input" id="code-inputs">
+              <input type="text" maxlength="1" class="code-char" data-idx="0" id="c0" />
+              <input type="text" maxlength="1" class="code-char" data-idx="1" id="c1" />
+              <input type="text" maxlength="1" class="code-char" data-idx="2" id="c2" />
+              <input type="text" maxlength="1" class="code-char" data-idx="3" id="c3" />
+              <input type="text" maxlength="1" class="code-char" data-idx="4" id="c4" />
+              <input type="text" maxlength="1" class="code-char" data-idx="5" id="c5" />
+            </div>
+
+            <div id="verify-error" class="form-error" style="text-align:center;margin-bottom:12px;"></div>
+
+            <button class="btn btn-primary btn-full" id="verify-btn" onclick="submitVerification()">
+              Verify Email
+            </button>
+            <div style="margin-top:16px;">
+              <button class="btn btn-outline btn-sm" onclick="openInbox()">📬 Open Inbox to find code</button>
+            </div>
+
+            <div class="glass" style="margin-top:24px;padding:16px;border-color:rgba(245,158,11,0.2);text-align:left;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <span>⏳</span>
+                <span style="font-size:0.78rem;font-weight:700;color:var(--gold-400);">What happens next?</span>
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.6;">
+                1. Verify your email (this step)<br />
+                2. Wait for administrator approval<br />
+                3. Receive approval confirmation<br />
+                4. Login and start seeing patients!
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Patient redirect / Doctor pending -->
+        <div id="step-pending" class="hidden">
+          <div class="verify-screen">
+            <div class="verify-icon">✅</div>
+            <h2>You're All Set!</h2>
+            <p class="text-secondary" style="margin:8px 0 24px;" id="pending-message"></p>
+            <a href="index.html" class="btn btn-primary btn-lg">Go to Login</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Inbox Modal -->
+  <div class="modal-overlay" id="inbox-modal">
+    <div class="modal glass">
+      <button class="modal-close" onclick="closeInbox()">✕</button>
+      <h3 style="margin-bottom:16px;">📬 Email Inbox</h3>
+      <div id="inbox-list-wrap">
+        <div id="inbox-list"></div>
+      </div>
+      <div id="email-viewer" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/email.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    let currentRole = 'patient';
+    let pendingUserId = null;
+
+    function selectRole(role) {
+      currentRole = role;
+      document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+      document.querySelector(`[data-role="${role}"]`).classList.add('selected');
+
+      if (role === 'doctor') {
+        document.getElementById('doctor-fields').classList.remove('hidden');
+        document.getElementById('patient-fields').classList.add('hidden');
+      } else {
+        document.getElementById('patient-fields').classList.remove('hidden');
+        document.getElementById('doctor-fields').classList.add('hidden');
+      }
+    }
+
+    document.getElementById('register-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const errEl = document.getElementById('register-error');
+      const btn = document.getElementById('register-btn');
+      errEl.classList.remove('show');
+
+      const data = {
+        name: document.getElementById('reg-name').value.trim(),
+        email: document.getElementById('reg-email').value.trim(),
+        password: document.getElementById('reg-password').value,
+        phone: document.getElementById('reg-phone').value.trim(),
+      };
+
+      if (!data.name || !data.email || !data.password) {
+        errEl.textContent = 'Please fill in all required fields';
+        errEl.classList.add('show'); return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Creating account...';
+
+      setTimeout(() => {
+        let result;
+        if (currentRole === 'patient') {
+          result = Auth.registerPatient({
+            ...data,
+            dob: document.getElementById('reg-dob').value,
+            bloodGroup: document.getElementById('reg-blood').value,
+          });
+        } else {
+          result = Auth.registerDoctor({
+            ...data,
+            specialization: document.getElementById('reg-spec').value,
+            licenseNumber: document.getElementById('reg-license').value,
+            experience: document.getElementById('reg-exp').value,
+            bio: document.getElementById('reg-bio').value,
+          });
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account';
+
+        if (!result.ok) {
+          errEl.textContent = result.error;
+          errEl.classList.add('show'); return;
+        }
+
+        pendingUserId = result.user.id;
+
+        if (currentRole === 'patient') {
+          // Direct to dashboard
+          showToast('Account created! Welcome!', 'success');
+          setTimeout(() => window.location.href = 'dashboard-patient.html', 800);
+        } else {
+          // Show verification step
+          document.getElementById('step-register').classList.add('hidden');
+          document.getElementById('step-verify').classList.remove('hidden');
+          document.getElementById('verify-email-display').textContent = data.email;
+          showToast('Account created! Check your inbox for verification code.', 'success');
+          // Auto-open inbox
+          setTimeout(() => openInbox(), 1000);
+        }
+      }, 700);
+    });
+
+    // Code input navigation
+    document.querySelectorAll('.code-char').forEach((input, i, all) => {
+      input.addEventListener('input', function () {
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (this.value && i < all.length - 1) all[i + 1].focus();
+      });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && !this.value && i > 0) all[i - 1].focus();
+      });
+      input.addEventListener('paste', function (e) {
+        e.preventDefault();
+        const pasted = (e.clipboardData.getData('text')).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+        pasted.split('').forEach((ch, idx) => { if (all[idx]) all[idx].value = ch; });
+        all[Math.min(pasted.length, 5)].focus();
+      });
+    });
+
+    function submitVerification() {
+      const code = Array.from(document.querySelectorAll('.code-char')).map(i => i.value).join('');
+      const errEl = document.getElementById('verify-error');
+      errEl.classList.remove('show');
+
+      if (code.length !== 6) {
+        errEl.textContent = 'Please enter the full 6-character code';
+        errEl.classList.add('show'); return;
+      }
+
+      const result = Auth.verifyEmailToken(pendingUserId, code);
+      if (!result.ok) {
+        errEl.textContent = result.error;
+        errEl.classList.add('show'); return;
+      }
+
+      document.getElementById('step-verify').classList.add('hidden');
+      document.getElementById('step-pending').classList.remove('hidden');
+      document.getElementById('pending-message').textContent =
+        'Email verified! Your application is now pending administrator approval. You\'ll receive an email once approved.';
+      showToast('Email verified successfully!', 'success');
+    }
+
+    function openInbox() {
+      const user = DB.getUserById(pendingUserId);
+      if (!user) return;
+      Email.renderInbox(user.email);
+      document.getElementById('inbox-modal').classList.add('open');
+    }
+    function closeInbox() {
+      document.getElementById('inbox-modal').classList.remove('open');
+    }
+  </script>
+</body>
+
+</html>
