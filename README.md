@@ -1,51 +1,51 @@
-# ?? CareBridge HMS � Hospital Management System
+# CareBridge HMS  Hospital Management System
 
 A modern, browser-based Hospital Management System that connects **patients**, **doctors**, and **administrators** through a unified, role-aware dashboard experience.
 
 ---
 
-## ? Features
+##  Features
 
-### ?? Multi-Role Authentication
+###  Multi-Role Authentication
 - Separate login and registration flows for **Patients**, **Doctors**, and **Admins**
 - Session management via `localStorage`
 - Password validation and duplicate email checks
 
-### ????? Patient Dashboard
+### Patient Dashboard
 - Book and manage appointments
 - View appointment history and status
 - Receive in-app notifications
 
-### ????? Doctor Dashboard
+###  Doctor Dashboard
 - View today's schedule and upcoming appointments
 - Accept or reject appointment requests
 - Manage patient interactions
 
-### ??? Admin Dashboard
+###  Admin Dashboard
 - Oversee all users (patients and doctors)
 - Monitor and manage all appointments
 - Full system control panel
 
-### ?? Email Notifications
+###  Email Notifications
 - Automated email alerts for appointment events (via `email.js`)
 
 ---
 
-## ??? Project Structure
+##  Project Structure
 
 ```
-?? Project Root/
+ Project Root/
 +-- index.html               # Login page (entry point)
 +-- register.html            # Patient & Doctor registration
 +-- dashboard-patient.html   # Patient dashboard
 +-- dashboard-doctor.html    # Doctor dashboard
 +-- dashboard-admin.html     # Admin dashboard
-�
+
 +-- css/
-�   +-- main.css             # Global design system & shared styles
-�   +-- auth.css             # Login & registration styles
-�   +-- dashboard.css        # Dashboard layout & component styles
-�
+   +-- main.css             # Global design system & shared styles
+   +-- auth.css             # Login & registration styles
+   +-- dashboard.css        # Dashboard layout & component styles
+
 +-- js/
     +-- data.js              # Data layer � localStorage CRUD & seeding
     +-- auth.js              # Authentication & registration logic
@@ -54,9 +54,9 @@ A modern, browser-based Hospital Management System that connects **patients**, *
 
 ---
 
-## ?? Getting Started
+##  Getting Started
 
-This is a **pure front-end** application � no server, build tools, or dependencies required.
+This is a **pure front-end** application  no server, build tools, or dependencies required.
 
 ### Run Locally
 
@@ -78,11 +78,11 @@ A default admin account is automatically seeded on first load:
 | Email    | `admin@hospital.com`   |
 | Password | `Admin@123`            |
 
-> ?? Change the default admin credentials before deploying to any public environment.
+>  Change the default admin credentials before deploying to any public environment.
 
 ---
 
-## ?? Data Storage
+##  Data Storage
 
 All application data is persisted in the browser's **`localStorage`** under the following keys:
 
@@ -97,7 +97,7 @@ All application data is persisted in the browser's **`localStorage`** under the 
 
 ---
 
-## ?? Tech Stack
+##  Tech Stack
 
 | Layer      | Technology               |
 |------------|--------------------------|
@@ -109,7 +109,7 @@ All application data is persisted in the browser's **`localStorage`** under the 
 
 ---
 
-## ?? User Roles
+##  User Roles
 
 | Role      | Registration         | Default Access           |
 |-----------|----------------------|--------------------------|
@@ -119,13 +119,13 @@ All application data is persisted in the browser's **`localStorage`** under the 
 
 ---
 
-## ?? Security Notes
+##  Security Notes
 
-- Passwords are stored in **plain text** in `localStorage` � this project is intended for **educational/demo purposes only**.
+- Passwords are stored in **plain text** in `localStorage`  this project is intended for **educational/demo purposes only**.
 - Do **not** use this system in a production or clinical environment without a proper backend, authentication, and encryption layer.
 
 ---
 
-## ?? License
+##  License
 
 This project is open source and available for educational use.
