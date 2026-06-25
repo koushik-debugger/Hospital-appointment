@@ -267,10 +267,12 @@
   <script src="js/auth.js"></script>
   <script>
     // Redirect if already logged in
-    const existingSession = DB.getSession();
-    if (existingSession) {
-      redirectByRole(existingSession.role);
-    }
+    (async function init() {
+      const existingSession = await DB.getSession();
+      if (existingSession) {
+        redirectByRole(existingSession.role);
+      }
+    })();
 
     function redirectByRole(role) {
       const routes = {
@@ -292,8 +294,8 @@
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner"></div> Signing in...';
 
-      setTimeout(() => {
-        const result = Auth.login(email, password);
+      setTimeout(async () => {
+        const result = await Auth.login(email, password);
         btn.disabled = false;
         btn.innerHTML = 'Sign In';
 
@@ -407,11 +409,11 @@
       btn.disabled = true;
       btn.textContent = 'Searching...';
 
-      setTimeout(() => {
+      setTimeout(async () => {
         btn.disabled = false;
         btn.textContent = 'Find My Password';
 
-        const result = Auth.forgotPassword(email);
+        const result = await Auth.forgotPassword(email);
 
         if (!result.ok) {
           errEl.textContent = result.error;

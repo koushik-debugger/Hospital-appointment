@@ -262,12 +262,13 @@
   <script src="js/email.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    let currentUser = Auth.requireAuth(['doctor']);
-    if (!currentUser) throw new Error('Not authorized');
-
+    let currentUser = null;
     let currentDocAptFilter = 'all';
 
-    function init() {
+    async function init() {
+      currentUser = await Auth.requireAuth(['doctor']);
+      if (!currentUser) return;
+
       document.getElementById('sidebar-name').textContent = currentUser.name;
       document.getElementById('sidebar-avatar').textContent = getInitials(currentUser.name);
 
@@ -296,14 +297,15 @@
       document.getElementById('greeting').textContent = `${greet}, Dr. ${currentUser.name.split(' ')[0]}! 👋`;
 
       // Pending apt badge
-      const pendingCount = DB.getAppointmentsByDoctor(currentUser.id).filter(a => a.status === 'pending').length;
+      const apts = await DB.getAppointmentsByDoctor(currentUser.id);
+      const pendingCount = apts.filter(a => a.status === 'pending').length;
       const badge = document.getElementById('pending-apt-count');
       if (pendingCount > 0) { badge.textContent = pendingCount; badge.style.display = 'flex'; }
 
-      renderStats();
-      renderPendingApts();
-      renderDocAptList('all');
-      renderPatients();
+      await renderStats();
+      await renderPendingApts();
+      await renderDocAptList('all');
+      await renderPatients();
       fillProfile();
     }
 
@@ -313,8 +315,8 @@
       badge.textContent = count; badge.style.display = count > 0 ? 'flex' : 'none';
     }
 
-    function renderStats() {
-      const apts = DB.getAppointmentsByDoctor(currentUser.id);
+    async function renderStats() {
+      const apts = await DB.getAppointmentsByDoctor(currentUser.id);
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('stat-pending').textContent = apts.filter(a => a.status === 'pending').length;
       document.getElementById('stat-confirmed').textContent = apts.filter(a => a.status === 'confirmed' && a.date === today).length;
@@ -323,30 +325,33 @@
       document.getElementById('stat-patients').textContent = uniquePatients;
     }
 
-    function renderPendingApts() {
-      const apts = DB.getAppointmentsByDoctor(currentUser.id).filter(a => a.status === 'pending');
+    async function renderPendingApts() {
+      const aptsRaw = await DB.getAppointmentsByDoctor(currentUser.id);
+      const apts = aptsRaw.filter(a => a.status === 'pending');
       const el = document.getElementById('pending-apt-list');
       if (!apts.length) {
         el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No pending requests</h3><p>All clear! No appointments awaiting action.</p></div>`;
         return;
       }
-      el.innerHTML = apts.map(a => docAptCard(a)).join('');
+      const htmls = await Promise.all(apts.map(a => docAptCard(a)));
+      el.innerHTML = htmls.join('');
     }
 
-    function renderDocAptList(filter) {
+    async function renderDocAptList(filter) {
       currentDocAptFilter = filter;
-      const apts = DB.getAppointmentsByDoctor(currentUser.id)
-        .filter(a => filter === 'all' || a.status === filter);
+      const aptsRaw = await DB.getAppointmentsByDoctor(currentUser.id);
+      const apts = aptsRaw.filter(a => filter === 'all' || a.status === filter);
       const el = document.getElementById('doc-apt-list');
       if (!apts.length) {
         el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No ${filter === 'all' ? '' : filter} appointments</h3></div>`;
         return;
       }
-      el.innerHTML = apts.map(a => docAptCard(a)).join('');
+      const htmls = await Promise.all(apts.map(a => docAptCard(a)));
+      el.innerHTML = htmls.join('');
     }
 
-    function docAptCard(a) {
-      const patient = DB.getUserById(a.patientId);
+    async function docAptCard(a) {
+      const patient = await DB.getUserById(a.patientId);
       const statusClass = { pending: 'warning', confirmed: 'success', completed: 'teal', rejected: 'danger', cancelled: 'muted' };
       return `
       <div class="appointment-card" style="margin-bottom:14px;">
@@ -397,57 +402,58 @@
     }
     function closeActionModal() { document.getElementById('action-modal').classList.remove('open'); }
 
-    function confirmAction() {
+    async function confirmAction() {
       const aptId = document.getElementById('action-apt-id').value;
       const type = document.getElementById('action-type').value;
       const reason = document.getElementById('reject-reason').value.trim();
-      const apt = DB.getAppointmentById(aptId);
-      const patient = DB.getUserById(apt.patientId);
+      const apt = await DB.getAppointmentById(aptId);
+      const patient = await DB.getUserById(apt.patientId);
 
       if (type === 'confirm') {
         apt.status = 'confirmed';
-        DB.saveAppointment(apt);
-        DB.createNotification(apt.patientId, '✅ Appointment Confirmed', `Dr. ${currentUser.name} confirmed your appointment on ${formatDate(apt.date)}`, 'success');
+        await DB.saveAppointment(apt);
+        await DB.createNotification(apt.patientId, '✅ Appointment Confirmed', `Dr. ${currentUser.name} confirmed your appointment on ${formatDate(apt.date)}`, 'success');
         Email.send({ to: patient.email, toName: patient.name, ...Email.Templates.appointmentStatusUpdate(patient.name, currentUser.name, formatDate(apt.date), apt.time, 'confirmed') });
         showToast('Appointment accepted!', 'success');
       } else {
         apt.status = 'rejected';
-        DB.saveAppointment(apt);
-        DB.createNotification(apt.patientId, '❌ Appointment Rejected', `Dr. ${currentUser.name} rejected your appointment. ${reason}`, 'danger');
+        await DB.saveAppointment(apt);
+        await DB.createNotification(apt.patientId, '❌ Appointment Rejected', `Dr. ${currentUser.name} rejected your appointment. ${reason}`, 'danger');
         Email.send({ to: patient.email, toName: patient.name, ...Email.Templates.appointmentStatusUpdate(patient.name, currentUser.name, formatDate(apt.date), apt.time, 'rejected') });
         showToast('Appointment rejected.', 'info');
       }
       closeActionModal();
-      renderStats(); renderPendingApts(); renderDocAptList(currentDocAptFilter);
+      await renderStats(); await renderPendingApts(); await renderDocAptList(currentDocAptFilter);
 
       // Update nav badge
-      const pendingCount = DB.getAppointmentsByDoctor(currentUser.id).filter(a => a.status === 'pending').length;
+      const apts = await DB.getAppointmentsByDoctor(currentUser.id);
+      const pendingCount = apts.filter(a => a.status === 'pending').length;
       const badge = document.getElementById('pending-apt-count');
       badge.textContent = pendingCount; badge.style.display = pendingCount > 0 ? 'flex' : 'none';
     }
 
-    function markComplete(aptId) {
-      const apt = DB.getAppointmentById(aptId);
+    async function markComplete(aptId) {
+      const apt = await DB.getAppointmentById(aptId);
       if (!apt) return;
       apt.status = 'completed';
-      DB.saveAppointment(apt);
-      const patient = DB.getUserById(apt.patientId);
-      DB.createNotification(apt.patientId, '🏥 Appointment Completed', `Your appointment with Dr. ${currentUser.name} has been marked as completed.`, 'info');
+      await DB.saveAppointment(apt);
+      const patient = await DB.getUserById(apt.patientId);
+      await DB.createNotification(apt.patientId, '🏥 Appointment Completed', `Your appointment with Dr. ${currentUser.name} has been marked as completed.`, 'info');
       Email.send({ to: patient.email, toName: patient.name, ...Email.Templates.appointmentStatusUpdate(patient.name, currentUser.name, formatDate(apt.date), apt.time, 'completed') });
       showToast('Appointment marked completed!', 'success');
-      renderStats(); renderPendingApts(); renderDocAptList(currentDocAptFilter);
+      await renderStats(); await renderPendingApts(); await renderDocAptList(currentDocAptFilter);
     }
 
-    function renderPatients() {
-      const apts = DB.getAppointmentsByDoctor(currentUser.id);
+    async function renderPatients() {
+      const apts = await DB.getAppointmentsByDoctor(currentUser.id);
       const pIds = [...new Set(apts.map(a => a.patientId))];
       const el = document.getElementById('patients-list');
       if (!pIds.length) {
         el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">🧑‍💼</div><h3>No patients yet</h3></div>`;
         return;
       }
-      el.innerHTML = pIds.map(id => {
-        const p = DB.getUserById(id);
+      const pPromises = pIds.map(async id => {
+        const p = await DB.getUserById(id);
         if (!p) return '';
         const count = apts.filter(a => a.patientId === id).length;
         return `
@@ -465,7 +471,9 @@
             ${p.dob ? `<span class="badge badge-muted">DOB: ${formatDate(p.dob)}</span>` : ''}
           </div>
         </div>`;
-      }).join('');
+      });
+      const htmls = await Promise.all(pPromises);
+      el.innerHTML = htmls.join('');
     }
 
     function fillProfile() {
@@ -476,9 +484,9 @@
       document.getElementById('dp-bio').value = currentUser.bio || '';
     }
 
-    document.getElementById('doc-profile-form').addEventListener('submit', function (e) {
+    document.getElementById('doc-profile-form').addEventListener('submit', async function (e) {
       e.preventDefault();
-      const res = Auth.updateProfile(currentUser.id, {
+      const res = await Auth.updateProfile(currentUser.id, {
         name: document.getElementById('dp-name').value.trim(),
         phone: document.getElementById('dp-phone').value.trim(),
         specialization: document.getElementById('dp-spec').value,
@@ -488,11 +496,11 @@
       if (res.ok) { currentUser = res.user; document.getElementById('sidebar-name').textContent = currentUser.name; showToast('Profile updated!', 'success'); }
     });
 
-    document.getElementById('doc-pw-form').addEventListener('submit', function (e) {
+    document.getElementById('doc-pw-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       const errEl = document.getElementById('doc-pw-error');
       errEl.classList.remove('show');
-      const res = Auth.changePassword(currentUser.id, document.getElementById('doc-pw-current').value, document.getElementById('doc-pw-new').value);
+      const res = await Auth.changePassword(currentUser.id, document.getElementById('doc-pw-current').value, document.getElementById('doc-pw-new').value);
       if (!res.ok) { errEl.textContent = res.error; errEl.classList.add('show'); return; }
       showToast('Password updated!', 'success'); this.reset();
     });
@@ -510,15 +518,15 @@
     }
     function closeInboxModal() { document.getElementById('inbox-modal').classList.remove('open'); }
 
-    function showSection(name) {
+    async function showSection(name) {
       document.querySelectorAll('#doctor-dashboard .tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.getElementById('section-' + name).classList.add('active');
       document.getElementById('nav-' + name)?.classList.add('active');
       const titles = { overview: 'Overview', appointments: 'Appointments', patients: 'My Patients', profile: 'Profile' };
       document.getElementById('topbar-title').textContent = titles[name] || name;
-      if (name === 'appointments') renderDocAptList(currentDocAptFilter);
-      if (name === 'patients') renderPatients();
+      if (name === 'appointments') await renderDocAptList(currentDocAptFilter);
+      if (name === 'patients') await renderPatients();
       if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
     }
 

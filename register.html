@@ -295,16 +295,16 @@
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner"></div> Creating account...';
 
-      setTimeout(() => {
+      setTimeout(async () => {
         let result;
         if (currentRole === 'patient') {
-          result = Auth.registerPatient({
+          result = await Auth.registerPatient({
             ...data,
             dob: document.getElementById('reg-dob').value,
             bloodGroup: document.getElementById('reg-blood').value,
           });
         } else {
-          result = Auth.registerDoctor({
+          result = await Auth.registerDoctor({
             ...data,
             specialization: document.getElementById('reg-spec').value,
             licenseNumber: document.getElementById('reg-license').value,
@@ -356,7 +356,7 @@
       });
     });
 
-    function submitVerification() {
+    async function submitVerification() {
       const code = Array.from(document.querySelectorAll('.code-char')).map(i => i.value).join('');
       const errEl = document.getElementById('verify-error');
       errEl.classList.remove('show');
@@ -366,7 +366,7 @@
         errEl.classList.add('show'); return;
       }
 
-      const result = Auth.verifyEmailToken(pendingUserId, code);
+      const result = await Auth.verifyEmailToken(pendingUserId, code);
       if (!result.ok) {
         errEl.textContent = result.error;
         errEl.classList.add('show'); return;
@@ -379,8 +379,8 @@
       showToast('Email verified successfully!', 'success');
     }
 
-    function openInbox() {
-      const user = DB.getUserById(pendingUserId);
+    async function openInbox() {
+      const user = await DB.getUserById(pendingUserId);
       if (!user) return;
       Email.renderInbox(user.email);
       document.getElementById('inbox-modal').classList.add('open');

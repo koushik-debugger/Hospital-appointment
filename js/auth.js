@@ -1,4 +1,4 @@
-// ─── Auth Logic ──────────────────────────────────────────────────────────────
+// ─── Auth Logic (Async) ──────────────────────────────────────────────────────────────
 
 const Auth = (() => {
 
@@ -15,12 +15,12 @@ const Auth = (() => {
   }
 
   // ── Register Patient ──────────────────────────────────────────
-  function registerPatient({ name, email, password, phone, dob, bloodGroup }) {
-    if (DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
+  async function registerPatient({ name, email, password, phone, dob, bloodGroup }) {
+    if (await DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
     const pwErr = validatePassword(password);
     if (pwErr) return { ok: false, error: pwErr };
 
-    const user = DB.createUser({
+    const user = await DB.createUser({
       name, email, password, phone, dob, bloodGroup,
       role: 'patient',
       status: 'active',
@@ -34,13 +34,13 @@ const Auth = (() => {
   }
 
   // ── Register Doctor ───────────────────────────────────────────
-  function registerDoctor({ name, email, password, phone, specialization, licenseNumber, experience, bio }) {
-    if (DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
+  async function registerDoctor({ name, email, password, phone, specialization, licenseNumber, experience, bio }) {
+    if (await DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
     const pwErr = validatePassword(password);
     if (pwErr) return { ok: false, error: pwErr };
 
     const token = genToken(6);
-    const user = DB.createUser({
+    const user = await DB.createUser({
       name, email, password, phone, specialization, licenseNumber,
       experience: parseInt(experience) || 0, bio,
       role: 'doctor',
@@ -59,7 +59,7 @@ const Auth = (() => {
     Email.send({ to: email, toName: name, ...tpl2 });
 
     // Notify admin
-    const admins = DB.getUsersByRole('admin');
+    const admins = await DB.getUsersByRole('admin');
     admins.forEach(admin => {
       DB.createNotification(admin.id, 'New Doctor Registration', `Dr. ${name} is awaiting approval.`, 'info');
     });
@@ -68,21 +68,21 @@ const Auth = (() => {
   }
 
   // ── Verify Email Token ────────────────────────────────────────
-  function verifyEmailToken(userId, token) {
-    const user = DB.getUserById(userId);
+  async function verifyEmailToken(userId, token) {
+    const user = await DB.getUserById(userId);
     if (!user) return { ok: false, error: 'User not found' };
     if (user.emailVerified) return { ok: true, alreadyVerified: true };
     if (user.verificationToken !== token.toUpperCase()) return { ok: false, error: 'Invalid code' };
 
     user.emailVerified = true;
     user.verificationToken = null;
-    DB.saveUser(user);
+    await DB.saveUser(user);
     return { ok: true };
   }
 
   // ── Login ─────────────────────────────────────────────────────
-  function login(email, password) {
-    const user = DB.getUserByEmail(email);
+  async function login(email, password) {
+    const user = await DB.getUserByEmail(email);
     if (!user) return { ok: false, error: 'Email not found' };
     if (user.password !== password) return { ok: false, error: 'Incorrect password' };
     if (user.status === 'rejected') return { ok: false, error: 'Your account has been rejected. Contact admin.' };
@@ -98,8 +98,8 @@ const Auth = (() => {
   }
 
   // ── Require Auth (redirect if not logged in) ──────────────────
-  function requireAuth(allowedRoles) {
-    const user = DB.getSession();
+  async function requireAuth(allowedRoles) {
+    const user = await DB.getSession();
     if (!user) { window.location.href = 'index.html'; return null; }
     if (allowedRoles && !allowedRoles.includes(user.role)) {
       window.location.href = 'index.html'; return null;
@@ -108,12 +108,12 @@ const Auth = (() => {
   }
 
   // ── Admin: Create Doctor ──────────────────────────────────────
-  function adminCreateDoctor({ name, email, phone, specialization, licenseNumber, experience, bio }) {
-    if (DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
+  async function adminCreateDoctor({ name, email, phone, specialization, licenseNumber, experience, bio }) {
+    if (await DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
     const password = 'Doctor@' + Math.floor(1000 + Math.random() * 9000);
     const token = genToken(6);
 
-    const user = DB.createUser({
+    const user = await DB.createUser({
       name, email, password, phone, specialization, licenseNumber,
       experience: parseInt(experience) || 0, bio,
       role: 'doctor',
@@ -145,12 +145,12 @@ const Auth = (() => {
   }
 
   // ── Admin: Create Admin ───────────────────────────────────────
-  function adminCreateAdmin({ name, email, phone }) {
-    if (DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
+  async function adminCreateAdmin({ name, email, phone }) {
+    if (await DB.getUserByEmail(email)) return { ok: false, error: 'Email already registered' };
     const password = 'Admin@' + Math.floor(1000 + Math.random() * 9000);
     const token = genToken(6);
 
-    const user = DB.createUser({
+    const user = await DB.createUser({
       name, email, password, phone,
       role: 'admin',
       status: 'pending_verification',
@@ -171,61 +171,61 @@ const Auth = (() => {
   }
 
   // ── Admin: Approve Doctor ─────────────────────────────────────
-  function approveDoctor(doctorId) {
-    const doc = DB.getUserById(doctorId);
+  async function approveDoctor(doctorId) {
+    const doc = await DB.getUserById(doctorId);
     if (!doc) return { ok: false, error: 'Doctor not found' };
     doc.status = 'active';
-    DB.saveUser(doc);
+    await DB.saveUser(doc);
 
     // Send approval email
     const tpl = Email.Templates.doctorApproved(doc.name);
     Email.send({ to: doc.email, toName: doc.name, ...tpl });
 
     // Notify doctor
-    DB.createNotification(doc.id, '🎉 Account Approved!', 'Your account has been approved. You can now log in!', 'success');
+    await DB.createNotification(doc.id, '🎉 Account Approved!', 'Your account has been approved. You can now log in!', 'success');
 
     return { ok: true };
   }
 
   // ── Admin: Reject Doctor ──────────────────────────────────────
-  function rejectDoctor(doctorId, reason = '') {
-    const doc = DB.getUserById(doctorId);
+  async function rejectDoctor(doctorId, reason = '') {
+    const doc = await DB.getUserById(doctorId);
     if (!doc) return { ok: false, error: 'Doctor not found' };
     doc.status = 'rejected';
-    DB.saveUser(doc);
+    await DB.saveUser(doc);
 
     const tpl = Email.Templates.doctorRejected(doc.name, reason);
     Email.send({ to: doc.email, toName: doc.name, ...tpl });
 
-    DB.createNotification(doc.id, '❌ Account Rejected', reason || 'Your account application was rejected.', 'danger');
+    await DB.createNotification(doc.id, '❌ Account Rejected', reason || 'Your account application was rejected.', 'danger');
 
     return { ok: true };
   }
 
   // ── Update Profile ────────────────────────────────────────────
-  function updateProfile(userId, updates) {
-    const user = DB.getUserById(userId);
+  async function updateProfile(userId, updates) {
+    const user = await DB.getUserById(userId);
     if (!user) return { ok: false, error: 'User not found' };
     const updatedUser = { ...user, ...updates };
-    DB.saveUser(updatedUser);
+    await DB.saveUser(updatedUser);
     return { ok: true, user: updatedUser };
   }
 
   // ── Change Password ───────────────────────────────────────────
-  function changePassword(userId, currentPw, newPw) {
-    const user = DB.getUserById(userId);
+  async function changePassword(userId, currentPw, newPw) {
+    const user = await DB.getUserById(userId);
     if (!user) return { ok: false, error: 'User not found' };
     if (user.password !== currentPw) return { ok: false, error: 'Current password incorrect' };
     const err = validatePassword(newPw);
     if (err) return { ok: false, error: err };
     user.password = newPw;
-    DB.saveUser(user);
+    await DB.saveUser(user);
     return { ok: true };
   }
 
   // ── Forgot Password ───────────────────────────────────────────
-  function forgotPassword(email) {
-    const user = DB.getUserByEmail(email);
+  async function forgotPassword(email) {
+    const user = await DB.getUserByEmail(email);
     if (!user) return { ok: false, error: 'No account found with this email address.' };
     return { ok: true, password: user.password, name: user.name, role: user.role };
   }

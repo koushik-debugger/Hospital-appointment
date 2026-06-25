@@ -1,5 +1,4 @@
-// ─── Data Layer ──────────────────────────────────────────────────────────────
-// All data stored in localStorage. Keys: hms_users, hms_appointments, hms_notifications
+// ─── Data Layer (API Backend) ──────────────────────────────────────────────────────────────
 
 const DB = {
   KEYS: {
@@ -9,157 +8,124 @@ const DB = {
     session: 'hms_session',
   },
 
-  // ── Generic helpers ──────────────────────────────────────────
-  _get(key) {
-    try { return JSON.parse(localStorage.getItem(key) || '[]'); }
-    catch { return []; }
-  },
-  _set(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-  },
-  _genId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  },
-
-  // ── Seed ─────────────────────────────────────────────────────
-  seed() {
-    const users = this._get(this.KEYS.users);
-    const hasAdmin = users.some(u => u.role === 'admin');
-    if (!hasAdmin) {
-      const admin = {
-        id: this._genId(),
-        name: 'Super Admin',
-        email: 'admin@hospital.com',
-        password: 'Admin@123',
-        role: 'admin',
-        status: 'active',
-        emailVerified: true,
-        verificationToken: null,
-        createdAt: new Date().toISOString(),
-        phone: '+91-9000000000',
-        avatar: null,
-      };
-      users.push(admin);
-      this._set(this.KEYS.users, users);
-      console.info('[HMS] Default admin seeded — admin@hospital.com / Admin@123');
+  async _fetch(url, options = {}) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    } catch (err) {
+      console.error('API Error:', err);
+      return null;
     }
   },
 
+  // ── Seed ─────────────────────────────────────────────────────
+  async seed() {
+    // The Python server now handles seeding the default admin automatically.
+  },
+
   // ── Users ────────────────────────────────────────────────────
-  getUsers() { return this._get(this.KEYS.users); },
-  getUserById(id) { return this.getUsers().find(u => u.id === id) || null; },
-  getUserByEmail(email) {
-    return this.getUsers().find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  async getUsers() { return (await this._fetch('/api/users')) || []; },
+  async getUserById(id) {
+    const users = await this._fetch(`/api/users?id=${id}`);
+    return users && users.length ? users[0] : null;
   },
-  saveUser(user) {
-    const users = this.getUsers();
-    const idx = users.findIndex(u => u.id === user.id);
-    if (idx > -1) { users[idx] = user; }
-    else { users.push(user); }
-    this._set(this.KEYS.users, users);
-    return user;
+  async getUserByEmail(email) {
+    const users = await this._fetch(`/api/users?email=${encodeURIComponent(email)}`);
+    return users && users.length ? users[0] : null;
   },
-  createUser(data) {
-    const user = { id: this._genId(), createdAt: new Date().toISOString(), ...data };
-    const users = this.getUsers();
-    users.push(user);
-    this._set(this.KEYS.users, users);
-    return user;
+  async saveUser(user) {
+    return await this._fetch(`/api/users/${user.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(user)
+    });
   },
-  deleteUser(id) {
-    const users = this.getUsers().filter(u => u.id !== id);
-    this._set(this.KEYS.users, users);
+  async createUser(data) {
+    return await this._fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   },
-  getUsersByRole(role) { return this.getUsers().filter(u => u.role === role); },
-  getPendingDoctors() {
-    return this.getUsers().filter(u => u.role === 'doctor' && u.status === 'pending_approval');
+  async deleteUser(id) {
+    await this._fetch(`/api/users/${id}`, { method: 'DELETE' });
+  },
+  async getUsersByRole(role) {
+    return (await this._fetch(`/api/users?role=${role}`)) || [];
+  },
+  async getPendingDoctors() {
+    return (await this._fetch(`/api/users?role=doctor&status=pending_approval`)) || [];
   },
 
   // ── Appointments ─────────────────────────────────────────────
-  getAppointments() { return this._get(this.KEYS.appointments); },
-  getAppointmentById(id) { return this.getAppointments().find(a => a.id === id) || null; },
-  getAppointmentsByPatient(patientId) {
-    return this.getAppointments().filter(a => a.patientId === patientId)
-      .sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
+  async getAppointments() { return (await this._fetch('/api/appointments')) || []; },
+  async getAppointmentById(id) {
+    const apts = await this.getAppointments();
+    return apts.find(a => a.id === id) || null;
   },
-  getAppointmentsByDoctor(doctorId) {
-    return this.getAppointments().filter(a => a.doctorId === doctorId)
-      .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
+  async getAppointmentsByPatient(patientId) {
+    const apts = await this._fetch(`/api/appointments?patientId=${patientId}`) || [];
+    return apts.sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
   },
-  createAppointment(data) {
-    const apt = { id: this._genId(), createdAt: new Date().toISOString(), status: 'pending', ...data };
-    const apts = this.getAppointments();
-    apts.push(apt);
-    this._set(this.KEYS.appointments, apts);
-    return apt;
+  async getAppointmentsByDoctor(doctorId) {
+    const apts = await this._fetch(`/api/appointments?doctorId=${doctorId}`) || [];
+    return apts.sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time));
   },
-  saveAppointment(apt) {
-    const apts = this.getAppointments();
-    const idx = apts.findIndex(a => a.id === apt.id);
-    if (idx > -1) { apts[idx] = apt; }
-    else { apts.push(apt); }
-    this._set(this.KEYS.appointments, apts);
-    return apt;
+  async createAppointment(data) {
+    return await this._fetch('/api/appointments', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   },
-  deleteAppointment(id) {
-    const apts = this.getAppointments().filter(a => a.id !== id);
-    this._set(this.KEYS.appointments, apts);
+  async saveAppointment(apt) {
+    return await this._fetch(`/api/appointments/${apt.id}`, {
+      method: 'PUT',
+      body: JSON.stringify(apt)
+    });
+  },
+  async deleteAppointment(id) {
+    await this._fetch(`/api/appointments/${id}`, { method: 'DELETE' });
   },
 
   // ── Notifications ────────────────────────────────────────────
-  getNotifications() { return this._get(this.KEYS.notifications); },
-  getNotificationsForUser(userId) {
-    return this.getNotifications()
-      .filter(n => n.userId === userId)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  async getNotifications() { return (await this._fetch('/api/notifications')) || []; },
+  async getNotificationsForUser(userId) {
+    const notes = await this._fetch(`/api/notifications?userId=${userId}`) || [];
+    return notes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   },
-  getUnreadCount(userId) {
-    return this.getNotificationsForUser(userId).filter(n => !n.read).length;
+  async getUnreadCount(userId) {
+    const notes = await this.getNotificationsForUser(userId);
+    return notes.filter(n => !n.read).length;
   },
-  createNotification(userId, title, message, type = 'info') {
-    const n = {
-      id: this._genId(), userId, title, message, type,
-      read: false, createdAt: new Date().toISOString(),
-    };
-    const notes = this.getNotifications();
-    notes.push(n);
-    this._set(this.KEYS.notifications, notes);
-    return n;
+  async createNotification(userId, title, message, type = 'info') {
+    return await this._fetch('/api/notifications', {
+      method: 'POST',
+      body: JSON.stringify({ userId, title, message, type })
+    });
   },
-  markAllRead(userId) {
-    const notes = this.getNotifications().map(n =>
-      n.userId === userId ? { ...n, read: true } : n
-    );
-    this._set(this.KEYS.notifications, notes);
+  async markAllRead(userId) {
+    await this._fetch('/api/notifications/read', {
+      method: 'PUT',
+      body: JSON.stringify({ userId })
+    });
   },
 
   // ── Session ──────────────────────────────────────────────────
   setSession(userId) {
     sessionStorage.setItem(this.KEYS.session, userId);
   },
-  getSession() {
+  async getSession() {
     const id = sessionStorage.getItem(this.KEYS.session);
-    return id ? this.getUserById(id) : null;
+    return id ? await this.getUserById(id) : null;
   },
   clearSession() {
     sessionStorage.removeItem(this.KEYS.session);
   },
 
   // ── Stats for Admin ──────────────────────────────────────────
-  getStats() {
-    const users = this.getUsers();
-    const apts = this.getAppointments();
-    const today = new Date().toISOString().split('T')[0];
-    return {
-      totalPatients: users.filter(u => u.role === 'patient').length,
-      totalDoctors: users.filter(u => u.role === 'doctor' && u.status === 'active').length,
-      pendingDoctors: users.filter(u => u.role === 'doctor' && u.status === 'pending_approval').length,
-      totalAppointments: apts.length,
-      todayAppointments: apts.filter(a => a.date === today).length,
-      pendingAppointments: apts.filter(a => a.status === 'pending').length,
-    };
+  async getStats() {
+    return await this._fetch('/api/stats') || {};
   },
 };
-
-// Auto-seed on load
-DB.seed();

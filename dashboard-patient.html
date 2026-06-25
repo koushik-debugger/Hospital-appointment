@@ -326,13 +326,14 @@
 <script src="js/email.js"></script>
 <script src="js/auth.js"></script>
 <script>
-  let currentUser = Auth.requireAuth(['patient']);
-  if (!currentUser) throw new Error('Not authorized');
-
+  let currentUser = null;
   let selectedDoctorId = null;
   let currentAptFilter = 'all';
 
-  function init() {
+  async function init() {
+    currentUser = await Auth.requireAuth(['patient']);
+    if (!currentUser) return;
+
     // Greeting
     const hr = new Date().getHours();
     const greet = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
@@ -348,11 +349,11 @@
     badge.textContent = unread;
     badge.style.display = unread > 0 ? 'flex' : 'none';
 
-    renderStats();
-    renderOverviewAppointments();
-    renderBookDoctors();
-    renderAptList('all');
-    renderAllDoctors();
+    await renderStats();
+    await renderOverviewAppointments();
+    await renderBookDoctors();
+    await renderAptList('all');
+    await renderAllDoctors();
     fillProfile();
 
     // Min date = today
@@ -360,31 +361,33 @@
     document.getElementById('apt-date').min = today;
   }
 
-  function renderStats() {
-    const apts = DB.getAppointmentsByPatient(currentUser.id);
+  async function renderStats() {
+    const apts = await DB.getAppointmentsByPatient(currentUser.id);
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('stat-upcoming').textContent =
       apts.filter(a => a.date >= today && ['pending','confirmed'].includes(a.status)).length;
     document.getElementById('stat-completed').textContent = apts.filter(a => a.status === 'completed').length;
     document.getElementById('stat-pending').textContent   = apts.filter(a => a.status === 'pending').length;
-    document.getElementById('stat-doctors').textContent   = DB.getUsersByRole('doctor').filter(d => d.status === 'active').length;
+    const doctors = await DB.getUsersByRole('doctor');
+    document.getElementById('stat-doctors').textContent   = doctors.filter(d => d.status === 'active').length;
   }
 
-  function renderOverviewAppointments() {
+  async function renderOverviewAppointments() {
     const today = new Date().toISOString().split('T')[0];
-    const apts  = DB.getAppointmentsByPatient(currentUser.id)
-      .filter(a => a.date >= today && ['pending','confirmed'].includes(a.status))
-      .slice(0, 3);
+    const aptsRaw = await DB.getAppointmentsByPatient(currentUser.id);
+    const apts = aptsRaw.filter(a => a.date >= today && ['pending','confirmed'].includes(a.status)).slice(0, 3);
     const el = document.getElementById('overview-appointments');
     if (!apts.length) {
       el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📅</div><h3>No upcoming appointments</h3><p>Book your first appointment with a doctor</p><button class="btn btn-primary" onclick="showSection('book')" style="margin-top:8px;">Book Now</button></div>`;
       return;
     }
-    el.innerHTML = apts.map(a => aptCard(a)).join('');
+    const htmlPromises = apts.map(a => aptCard(a));
+    const htmls = await Promise.all(htmlPromises);
+    el.innerHTML = htmls.join('');
   }
 
-  function aptCard(a, showCancel = true) {
-    const doctor = DB.getUserById(a.doctorId);
+  async function aptCard(a, showCancel = true) {
+    const doctor = await DB.getUserById(a.doctorId);
     const statusClass = { pending:'warning', confirmed:'success', completed:'teal', rejected:'danger', cancelled:'muted' };
     return `
       <div class="appointment-card" style="margin-bottom:14px;">
@@ -410,16 +413,18 @@
       </div>`;
   }
 
-  function renderAptList(filter) {
+  async function renderAptList(filter) {
     currentAptFilter = filter;
-    const apts = DB.getAppointmentsByPatient(currentUser.id)
-      .filter(a => filter === 'all' || a.status === filter);
+    const aptsRaw = await DB.getAppointmentsByPatient(currentUser.id);
+    const apts = aptsRaw.filter(a => filter === 'all' || a.status === filter);
     const el = document.getElementById('apt-list');
     if (!apts.length) {
       el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No ${filter === 'all' ? '' : filter} appointments</h3></div>`;
       return;
     }
-    el.innerHTML = apts.map(a => aptCard(a)).join('');
+    const htmlPromises = apts.map(a => aptCard(a));
+    const htmls = await Promise.all(htmlPromises);
+    el.innerHTML = htmls.join('');
   }
 
   function filterApts(filter, btn) {
@@ -428,10 +433,11 @@
     renderAptList(filter);
   }
 
-  function renderBookDoctors() {
+  async function renderBookDoctors() {
     const search = (document.getElementById('doc-search')?.value || '').toLowerCase();
     const spec   = document.getElementById('spec-filter')?.value || '';
-    const doctors = DB.getUsersByRole('doctor').filter(d =>
+    const docsRaw = await DB.getUsersByRole('doctor');
+    const doctors = docsRaw.filter(d =>
       d.status === 'active' &&
       (!search || d.name.toLowerCase().includes(search) || (d.specialization||'').toLowerCase().includes(search)) &&
       (!spec || d.specialization === spec)
@@ -455,9 +461,9 @@
 
   function filterDoctors() { renderBookDoctors(); }
 
-  function selectDoctor(id) {
+  async function selectDoctor(id) {
     selectedDoctorId = id;
-    const doc = DB.getUserById(id);
+    const doc = await DB.getUserById(id);
     const info = document.getElementById('selected-doc-info');
     info.style.display = 'block';
     document.getElementById('sel-doc-avatar').textContent = getInitials(doc.name);
@@ -518,7 +524,7 @@
     showToast('Department suggested based on symptoms', 'success');
   }
 
-  document.getElementById('book-form').addEventListener('submit', function(e) {
+  document.getElementById('book-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const errEl = document.getElementById('book-error');
     errEl.classList.remove('show');
@@ -529,22 +535,22 @@
     const reason = document.getElementById('apt-reason').value.trim();
     if (!date || !time || !reason) { errEl.textContent = 'Please fill all fields'; errEl.classList.add('show'); return; }
 
-    const doctor = DB.getUserById(selectedDoctorId);
-    const apt = DB.createAppointment({ patientId: currentUser.id, doctorId: selectedDoctorId, date, time, reason });
+    const doctor = await DB.getUserById(selectedDoctorId);
+    const apt = await DB.createAppointment({ patientId: currentUser.id, doctorId: selectedDoctorId, date, time, reason });
 
     // Emails
     Email.send({ to: currentUser.email, toName: currentUser.name, ...Email.Templates.appointmentBooked(currentUser.name, doctor.name, formatDate(date), time) });
 
     // Notify doctor
-    DB.createNotification(selectedDoctorId, 'New Appointment Request', `${currentUser.name} booked an appointment on ${formatDate(date)} at ${time}`, 'info');
+    await DB.createNotification(selectedDoctorId, 'New Appointment Request', `${currentUser.name} booked an appointment on ${formatDate(date)} at ${time}`, 'info');
 
     showToast('Appointment booked successfully!', 'success');
     this.reset();
     selectedDoctorId = null;
     document.getElementById('selected-doc-info').style.display = 'none';
-    renderStats();
-    renderBookDoctors();
-    renderOverviewAppointments();
+    await renderStats();
+    await renderBookDoctors();
+    await renderOverviewAppointments();
 
     // Update inbox badge
     const badge = document.getElementById('inbox-badge');
@@ -552,9 +558,10 @@
     badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none';
   });
 
-  function renderAllDoctors() {
+  async function renderAllDoctors() {
     const search = (document.getElementById('all-doc-search')?.value||'').toLowerCase();
-    const doctors = DB.getUsersByRole('doctor').filter(d =>
+    const docsRaw = await DB.getUsersByRole('doctor');
+    const doctors = docsRaw.filter(d =>
       d.status === 'active' &&
       (!search || d.name.toLowerCase().includes(search) || (d.specialization||'').toLowerCase().includes(search))
     );
@@ -581,9 +588,9 @@
     document.getElementById('p-blood').value = currentUser.bloodGroup || '';
   }
 
-  document.getElementById('profile-form').addEventListener('submit', function(e) {
+  document.getElementById('profile-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const res = Auth.updateProfile(currentUser.id, {
+    const res = await Auth.updateProfile(currentUser.id, {
       name:       document.getElementById('p-name').value.trim(),
       phone:      document.getElementById('p-phone').value.trim(),
       dob:        document.getElementById('p-dob').value,
@@ -597,11 +604,11 @@
     }
   });
 
-  document.getElementById('pw-form').addEventListener('submit', function(e) {
+  document.getElementById('pw-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     const errEl = document.getElementById('pw-error');
     errEl.classList.remove('show');
-    const res = Auth.changePassword(currentUser.id, document.getElementById('pw-current').value, document.getElementById('pw-new').value);
+    const res = await Auth.changePassword(currentUser.id, document.getElementById('pw-current').value, document.getElementById('pw-new').value);
     if (!res.ok) { errEl.textContent = res.error; errEl.classList.add('show'); return; }
     showToast('Password updated!', 'success');
     this.reset();
@@ -612,17 +619,17 @@
     document.getElementById('cancel-modal').classList.add('open');
   }
   function closeCancelModal() { document.getElementById('cancel-modal').classList.remove('open'); }
-  function confirmCancel() {
+  async function confirmCancel() {
     const id  = document.getElementById('cancel-apt-id').value;
-    const apt = DB.getAppointmentById(id);
-    if (apt) { apt.status = 'cancelled'; DB.saveAppointment(apt); }
+    const apt = await DB.getAppointmentById(id);
+    if (apt) { apt.status = 'cancelled'; await DB.saveAppointment(apt); }
     closeCancelModal();
-    renderStats(); renderOverviewAppointments(); renderAptList(currentAptFilter);
+    await renderStats(); await renderOverviewAppointments(); await renderAptList(currentAptFilter);
     showToast('Appointment cancelled.', 'info');
   }
 
-  function openMessageModal(doctorId) {
-    const doc = DB.getUserById(doctorId);
+  async function openMessageModal(doctorId) {
+    const doc = await DB.getUserById(doctorId);
     if (!doc) return;
     document.getElementById('msg-doc-id').value = doctorId;
     document.getElementById('msg-doc-name').textContent = 'Dr. ' + doc.name;
@@ -634,14 +641,14 @@
     document.getElementById('message-modal').classList.remove('open');
   }
 
-  function sendMessage() {
+  async function sendMessage() {
     const docId = document.getElementById('msg-doc-id').value;
     const text = document.getElementById('msg-content').value.trim();
     if (!text) {
       showToast('Message cannot be empty.', 'warning');
       return;
     }
-    const doc = DB.getUserById(docId);
+    const doc = await DB.getUserById(docId);
     if (!doc) return;
 
     Email.send({
@@ -650,7 +657,7 @@
       ...Email.Templates.customMessage(currentUser.name, doc.name, text)
     });
 
-    DB.createNotification(docId, 'New Message', `You received a new message from ${currentUser.name}`, 'info');
+    await DB.createNotification(docId, 'New Message', `You received a new message from ${currentUser.name}`, 'info');
 
     showToast('Message sent successfully!', 'success');
     closeMessageModal();
@@ -667,16 +674,16 @@
     panel.classList.toggle('open');
   }
 
-  function showSection(name) {
+  async function showSection(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('section-' + name).classList.add('active');
     document.getElementById('nav-' + name)?.classList.add('active');
     const titles = { overview:'Overview', book:'Book Appointment', appointments:'My Appointments', doctors:'Find Doctors', profile:'My Profile' };
     document.getElementById('topbar-title').textContent = titles[name] || name;
-    if (name === 'appointments') renderAptList(currentAptFilter);
-    if (name === 'doctors') renderAllDoctors();
-    if (name === 'book') renderBookDoctors();
+    if (name === 'appointments') await renderAptList(currentAptFilter);
+    if (name === 'doctors') await renderAllDoctors();
+    if (name === 'book') await renderBookDoctors();
     // Close sidebar on mobile
     if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
   }
