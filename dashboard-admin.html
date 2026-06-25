@@ -396,7 +396,16 @@
     <div id="inbox-list-wrap">
       <div id="inbox-list"></div>
     </div>
-    <div id="e  <script>
+    <div id="email-viewer"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/data.js"></script>
+<script src="js/email.js"></script>
+<script src="js/auth.js"></script>
+<script>
   let currentUser = null;
   let adminAptFilter = 'all';
 
@@ -519,6 +528,7 @@
     document.getElementById('reject-modal').classList.add('open');
   }
   function closeRejectModal() { document.getElementById('reject-modal').classList.remove('open'); }
+  
   async function confirmRejectDoctor() {
     const id     = document.getElementById('reject-doc-id').value;
     const reason = document.getElementById('reject-reason-admin').value.trim();
@@ -957,39 +967,6 @@
   setTimeout(async () => {
     if (!currentUser) return;
     const s = await DB.getStats();
-    _snapshot = {
-      pendingDoctors: s.pendingDoctors,
-      totalApts:      s.totalAppointments,
-      pendingApts:    s.pendingAppointments,
-      totalPatients:  s.totalPatients,
-    };
-    // Load & render existing activity log
-    renderActivityFeed();
-    logActivity('🛡️', `Admin ${currentUser.name} logged in`, 'info');
-    // Start auto-refresh countdown
-    startCountdown();
-  }, 500);
-  </script>�───────────────────
-  function startCountdown() {
-    _countdownSeconds = 5;
-    _countdownTimer = setInterval(() => {
-      _countdownSeconds--;
-      const el = document.getElementById('refresh-countdown');
-      if (el) el.textContent = _countdownSeconds > 0 ? `refreshing in ${_countdownSeconds}s` : 'refreshing...';
-      if (_countdownSeconds <= 0) {
-        silentRefresh();
-        _countdownSeconds = 5;
-      }
-    }, 1000);
-  }
-
-  // ══════════════════════════════════════════════════════════
-
-  init();
-
-  // Init snapshot after data loads
-  setTimeout(() => {
-    const s = DB.getStats();
     _snapshot = {
       pendingDoctors: s.pendingDoctors,
       totalApts:      s.totalAppointments,
