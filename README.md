@@ -40,6 +40,9 @@ A modern, browser-based Hospital Management System that connects **patients**, *
 +-- dashboard-patient.html   # Patient dashboard
 +-- dashboard-doctor.html    # Doctor dashboard
 +-- dashboard-admin.html     # Admin dashboard
++-- server.py                # Backend Python API server
++-- database.sqlite          # SQLite database
++-- update_admin.py          # Admin update utility script
 
 +-- css/
    +-- main.css             # Global design system & shared styles
@@ -47,7 +50,7 @@ A modern, browser-based Hospital Management System that connects **patients**, *
    +-- dashboard.css        # Dashboard layout & component styles
 
 +-- js/
-    +-- data.js              # Data layer � localStorage CRUD & seeding
+    +-- data.js              # Data layer - API calls to backend
     +-- auth.js              # Authentication & registration logic
     +-- email.js             # Email notification utilities
 ```
@@ -56,18 +59,18 @@ A modern, browser-based Hospital Management System that connects **patients**, *
 
 ##  Getting Started
 
-This is a **pure front-end** application  no server, build tools, or dependencies required.
+This application uses a pure HTML/JS frontend and a Python built-in HTTP server backend with an SQLite database.
 
 ### Run Locally
 
 1. Clone or download this repository.
-2. Open `index.html` in any modern web browser.
+2. Ensure you have Python installed.
+3. Start the backend server by running:
 
 ```bash
-# Or serve with a simple HTTP server (recommended)
-npx serve .
-# Then visit: http://localhost:3000
+python server.py
 ```
+4. The application will be served at `http://127.0.0.1:8000`.
 
 ### Default Admin Credentials
 
@@ -84,16 +87,13 @@ A default admin account is automatically seeded on first load:
 
 ##  Data Storage
 
-All application data is persisted in the browser's **`localStorage`** under the following keys:
+All application data is stored using an SQLite database (`database.sqlite`). The backend server automatically creates and manages the following tables:
 
-| Key                  | Contents                        |
-|----------------------|---------------------------------|
-| `hms_users`          | All registered users            |
-| `hms_appointments`   | All appointment records         |
-| `hms_notifications`  | In-app notification queue       |
-| `hms_session`        | Currently logged-in user ID     |
+- **`users`**: All registered users (patients, doctors, admins)
+- **`appointments`**: All appointment records
+- **`notifications`**: In-app notification queue
 
-> **Note:** Data is browser-local and not shared across devices or browsers.
+Session information is managed on the client side using `localStorage` (via the `hms_session` key).
 
 ---
 
@@ -101,10 +101,11 @@ All application data is persisted in the browser's **`localStorage`** under the 
 
 | Layer      | Technology               |
 |------------|--------------------------|
+| Backend    | Python `http.server`     |
+| Database   | SQLite                   |
 | Structure  | HTML5 (Semantic)         |
 | Styling    | Vanilla CSS (custom)     |
 | Logic      | Vanilla JavaScript (ES6+)|
-| Storage    | Browser `localStorage`   |
 | Fonts      | Google Fonts             |
 
 ---
@@ -121,8 +122,8 @@ All application data is persisted in the browser's **`localStorage`** under the 
 
 ##  Security Notes
 
-- Passwords are stored in **plain text** in `localStorage`  this project is intended for **educational/demo purposes only**.
-- Do **not** use this system in a production or clinical environment without a proper backend, authentication, and encryption layer.
+- Passwords are stored in **plain text** in the SQLite database; this project is intended for **educational/demo purposes only**.
+- Do **not** use this system in a production or clinical environment without a proper production-ready backend, authentication, and encryption layer.
 
 ---
 
