@@ -540,6 +540,7 @@
 
     // Emails
     Email.send({ to: currentUser.email, toName: currentUser.name, ...Email.Templates.appointmentBooked(currentUser.name, doctor.name, formatDate(date), time) });
+    Email.send({ to: doctor.email, toName: doctor.name, ...Email.Templates.appointmentRequest(currentUser.name, doctor.name, formatDate(date), time, reason) });
 
     // Notify doctor
     await DB.createNotification(selectedDoctorId, 'New Appointment Request', `${currentUser.name} booked an appointment on ${formatDate(date)} at ${time}`, 'info');
@@ -689,6 +690,24 @@
   }
 
   function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+  window.addEventListener('storage', async (e) => {
+    if (e.key === DB.KEYS.appointments || e.key === DB.KEYS.session) {
+      if (currentUser) {
+        const unread = Email.getUnread(currentUser.email);
+        const badge = document.getElementById('inbox-badge');
+        if (badge) {
+          badge.textContent = unread;
+          badge.style.display = unread > 0 ? 'flex' : 'none';
+        }
+        await renderStats();
+        await renderOverviewAppointments();
+        await renderBookDoctors();
+        await renderAptList(currentAptFilter);
+        await renderAllDoctors();
+      }
+    }
+  });
 
   init();
 </script>

@@ -323,19 +323,13 @@
 
         pendingUserId = result.user.id;
 
-        if (currentRole === 'patient') {
-          // Direct to dashboard
-          showToast('Account created! Welcome!', 'success');
-          setTimeout(() => window.location.href = 'dashboard-patient.html', 800);
-        } else {
-          // Show verification step
-          document.getElementById('step-register').classList.add('hidden');
-          document.getElementById('step-verify').classList.remove('hidden');
-          document.getElementById('verify-email-display').textContent = data.email;
-          showToast('Account created! Check your inbox for verification code.', 'success');
-          // Auto-open inbox
-          setTimeout(() => openInbox(), 1000);
-        }
+        // Show verification step for both patient and doctor
+        document.getElementById('step-register').classList.add('hidden');
+        document.getElementById('step-verify').classList.remove('hidden');
+        document.getElementById('verify-email-display').textContent = data.email;
+        showToast('Account created! Check your inbox for verification code.', 'success');
+        // Auto-open inbox
+        setTimeout(() => openInbox(), 1000);
       }, 700);
     });
 
@@ -374,9 +368,19 @@
 
       document.getElementById('step-verify').classList.add('hidden');
       document.getElementById('step-pending').classList.remove('hidden');
-      document.getElementById('pending-message').textContent =
-        'Email verified! Your application is now pending administrator approval. You\'ll receive an email once approved.';
-      showToast('Email verified successfully!', 'success');
+      
+      if (currentRole === 'patient') {
+        // Patients don't need admin approval; log them in immediately
+        DB.setSession(pendingUserId);
+        document.getElementById('pending-message').textContent =
+          'Email verified successfully! Redirecting to your dashboard...';
+        showToast('Email verified successfully!', 'success');
+        setTimeout(() => window.location.href = 'dashboard-patient.html', 1500);
+      } else {
+        document.getElementById('pending-message').textContent =
+          'Email verified! Your application is now pending administrator approval. You\'ll receive an email once approved.';
+        showToast('Email verified successfully!', 'success');
+      }
     }
 
     async function openInbox() {

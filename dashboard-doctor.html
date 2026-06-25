@@ -333,7 +333,7 @@
         el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No pending requests</h3><p>All clear! No appointments awaiting action.</p></div>`;
         return;
       }
-      const htmls = await Promise.all(apts.map(a => docAptCard(a)));
+      const htmls = await Promise.all(apts.map(a => docAptCard(a, true)));
       el.innerHTML = htmls.join('');
     }
 
@@ -346,11 +346,11 @@
         el.innerHTML = `<div class="glass empty-state"><div class="empty-icon">📋</div><h3>No ${filter === 'all' ? '' : filter} appointments</h3></div>`;
         return;
       }
-      const htmls = await Promise.all(apts.map(a => docAptCard(a)));
+      const htmls = await Promise.all(apts.map(a => docAptCard(a, false)));
       el.innerHTML = htmls.join('');
     }
 
-    async function docAptCard(a) {
+    async function docAptCard(a, isPendingList = false) {
       const patient = await DB.getUserById(a.patientId);
       const statusClass = { pending: 'warning', confirmed: 'success', completed: 'teal', rejected: 'danger', cancelled: 'muted' };
       return `
@@ -370,11 +370,20 @@
           <div class="apt-time-chip">🕐 ${a.time}</div>
         </div>
         ${a.reason ? `<div class="apt-reason">📝 ${a.reason}</div>` : ''}
-        ${a.status === 'pending' ? `
-          <div class="apt-actions">
-            <button class="btn btn-success btn-sm" onclick="openActionModal('${a.id}','confirm')">✅ Accept</button>
-            <button class="btn btn-danger btn-sm" onclick="openActionModal('${a.id}','reject')">❌ Reject</button>
-          </div>` :
+        ${a.status === 'pending' ? (
+          isPendingList ? `
+            <div class="apt-actions">
+              <select class="form-control select-action" onchange="handleDropdownAction(this, '${a.id}')" style="width: auto; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; cursor: pointer; background: rgba(13, 21, 39, 0.4); border: 1.5px solid var(--glass-border); color: var(--text-primary);">
+                <option value="" disabled selected>Choose Action</option>
+                <option value="confirm">✅ Accept</option>
+                <option value="reject">❌ Reject</option>
+              </select>
+            </div>` : `
+            <div class="apt-actions">
+              <button class="btn btn-success btn-sm" onclick="openActionModal('${a.id}','confirm')">✅ Accept</button>
+              <button class="btn btn-danger btn-sm" onclick="openActionModal('${a.id}','reject')">❌ Reject</button>
+            </div>`
+        ) :
           a.status === 'confirmed' ? `
           <div class="apt-actions">
             <button class="btn btn-primary btn-sm" onclick="markComplete('${a.id}')">✔ Mark Completed</button>
@@ -386,6 +395,14 @@
       document.querySelectorAll('#section-appointments .tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderDocAptList(filter);
+    }
+
+    function handleDropdownAction(selectEl, aptId) {
+      const type = selectEl.value;
+      if (type) {
+        openActionModal(aptId, type);
+        selectEl.value = ''; // Reset selection
+      }
     }
 
     function openActionModal(aptId, type) {
@@ -529,8 +546,26 @@
       if (name === 'patients') await renderPatients();
       if (window.innerWidth < 900) document.getElementById('sidebar').classList.remove('open');
     }
-
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+    window.addEventListener('storage', async (e) => {
+      if (e.key === DB.KEYS.appointments || e.key === DB.KEYS.session) {
+        if (currentUser && currentUser.status === 'active') {
+          const apts = await DB.getAppointmentsByDoctor(currentUser.id);
+          const pendingCount = apts.filter(a => a.status === 'pending').length;
+          const badge = document.getElementById('pending-apt-count');
+          if (badge) {
+            badge.textContent = pendingCount;
+            badge.style.display = pendingCount > 0 ? 'flex' : 'none';
+          }
+          await renderStats();
+          await renderPendingApts();
+          await renderDocAptList(currentDocAptFilter);
+          await renderPatients();
+          updateInboxBadge();
+        }
+      }
+    });
 
     init();
   </script>

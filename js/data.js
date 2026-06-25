@@ -198,10 +198,55 @@ const DB = {
     return users.filter(u => u.role === 'doctor' && u.status === 'pending_approval');
   },
 
+  // Helper to check if appointment time has passed (assuming 30 minutes duration)
+  isAptTimePassed(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return false;
+    const match = timeStr.match(/^(\d{2}):(\d{2})\s*(AM|PM)$/i);
+    let hrs, mins;
+    if (match) {
+      hrs = parseInt(match[1]);
+      mins = parseInt(match[2]);
+      const ampm = match[3].toUpperCase();
+      if (ampm === 'PM' && hrs < 12) hrs += 12;
+      if (ampm === 'AM' && hrs === 12) hrs = 0;
+    } else {
+      const match24 = timeStr.match(/^(\d{2}):(\d{2})$/);
+      if (match24) {
+        hrs = parseInt(match24[1]);
+        mins = parseInt(match24[2]);
+      } else {
+        return false;
+      }
+    }
+    const pad = num => String(num).padStart(2, '0');
+    const isoStr = `${dateStr}T${pad(hrs)}:${pad(mins)}:00`;
+    const aptStart = new Date(isoStr);
+    
+    const aptEnd = new Date(aptStart.getTime() + 30 * 60 * 1000);
+    return new Date() > aptEnd;
+  },
+
   // ── Appointments ─────────────────────────────────────────────
   async getAppointments() {
     await this.seed();
-    return this._get(this.KEYS.appointments);
+    let apts = this._get(this.KEYS.appointments);
+    let updated = false;
+    apts = apts.map(apt => {
+      // Normalize missing status to 'pending'
+      if (!apt.status) {
+        apt.status = 'pending';
+        updated = true;
+      }
+      if ((apt.status === 'confirmed' || apt.status === 'pending') && this.isAptTimePassed(apt.date, apt.time)) {
+        apt.status = 'completed';
+        updated = true;
+      }
+      return apt;
+    });
+    if (updated) {
+      this._set(this.KEYS.appointments, apts);
+    }
+    return apts;
   },
   async getAppointmentById(id) {
     const apts = await this.getAppointments();
@@ -223,6 +268,7 @@ const DB = {
     const apts = await this.getAppointments();
     const apt = {
       id: 'apt-' + Math.random().toString(36).substring(2, 11),
+      status: 'pending',
       createdAt: new Date().toISOString(),
       ...data
     };

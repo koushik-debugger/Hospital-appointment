@@ -20,17 +20,21 @@ const Auth = (() => {
     const pwErr = validatePassword(password);
     if (pwErr) return { ok: false, error: pwErr };
 
+    const token = genToken(6);
     const user = await DB.createUser({
       name, email, password, phone, dob, bloodGroup,
       role: 'patient',
       status: 'active',
-      emailVerified: true,
-      verificationToken: null,
+      emailVerified: false,
+      verificationToken: token,
       avatar: null,
     });
 
-    DB.setSession(user.id);
-    return { ok: true, user };
+    // Send verification email
+    const tpl = Email.Templates.verification(name, token, email);
+    Email.send({ to: email, toName: name, ...tpl });
+
+    return { ok: true, user, needsVerification: true };
   }
 
   // ── Register Doctor ───────────────────────────────────────────

@@ -128,6 +128,26 @@ const Email = (() => {
         type: 'info',
       };
     },
+    appointmentRequest(patientName, doctorName, date, time, reason) {
+      return {
+        subject: '📅 New Appointment Request Received',
+        body: `
+          <div style="font-family:Inter,sans-serif;">
+            <h2 style="color:#14b8a6;">New Appointment Request</h2>
+            <p>Hi <strong>Dr. ${doctorName}</strong>,</p>
+            <p>A new appointment has been requested by patient <strong>${patientName}</strong>.</p>
+            <div style="margin:16px 0;padding:16px;background:#0d1527;border-radius:8px;border-left:3px solid #14b8a6;">
+              <p><strong>Patient:</strong> ${patientName}</p>
+              <p><strong>Date:</strong> ${date}</p>
+              <p><strong>Time:</strong> ${time}</p>
+              <p><strong>Reason:</strong> ${reason || '—'}</p>
+            </div>
+            <p>Please review and accept/reject this request from your dashboard.</p>
+          </div>
+        `,
+        type: 'info',
+      };
+    },
     appointmentStatusUpdate(patientName, doctorName, date, time, status) {
       const colors = { confirmed: '#22c55e', rejected: '#ef4444', completed: '#14b8a6', cancelled: '#f59e0b' };
       const color = colors[status] || '#94a3b8';
